@@ -68,8 +68,8 @@ def call(type, String product, String component, Closure body) {
         appPipelineConfig: pipelineConfig,
         pipelineCallbacksRunner: callbacksRunner,
         builder: pipelineType.builder,
-        subscription: subscription.nonProdName,
-        environment: environment.nonProdName,
+        subscription: subscription.ethosLdataName,
+        environment: environment.ethosLdataName,
         product: product,
         component: component,
         pactBrokerUrl: environment.pactBrokerUrl
