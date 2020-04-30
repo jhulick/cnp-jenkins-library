@@ -92,7 +92,10 @@ def identityBasedLogin(String subscription, Closure body) {
     az 'login --identity'
 
     withAzureKeyvault([
-      [$class: 'AzureKeyVaultSecret', secretType: 'Secret', name: "${subscription}-subscription-id", version: '', envVariable: 'ARM_SUBSCRIPTION_ID', keyVaultURLOverride: "https://infra-vault-${subscription}.vault.azure.net" ]
+      keyVaultURLOverride: "https://infra-vault-${subscription}.vault.azure.net",
+      azureKeyVaultSecrets: [
+        [secretType: 'Secret', name: "${subscription}-subscription-id", version: '', envVariable: 'ARM_SUBSCRIPTION_ID' ]
+      ]
     ]) {
       az "account set --subscription ${env.ARM_SUBSCRIPTION_ID}"
 
