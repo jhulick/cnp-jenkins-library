@@ -82,7 +82,7 @@ def servicePrincipalBasedLogin(String subscription, Closure body) {
   }
 }
 
-def identityBasedLogin(String subscription, Closure body) {
+def identityBasedLogin(String subscription, String, vault Closure body) {
   ansiColor('xterm') {
     def azJenkins = { cmd -> return sh(script: "env AZURE_CONFIG_DIR=/opt/jenkins/.azure-jenkins az $cmd", returnStdout: true).trim() }
     azJenkins "account set --subscription ${env.JENKINS_SUBSCRIPTION_NAME}"
@@ -92,7 +92,7 @@ def identityBasedLogin(String subscription, Closure body) {
     az 'login --identity'
 
     withAzureKeyvault([
-      keyVaultURLOverride: "https://infra-vault-${subscription}.vault.azure.net",
+      keyVaultURLOverride: "https://infra-vault-sandbox.vault.azure.net",
       azureKeyVaultSecrets: [
         [secretType: 'Secret', name: "${subscription}-subscription-id", version: '', envVariable: 'ARM_SUBSCRIPTION_ID' ]
       ]
