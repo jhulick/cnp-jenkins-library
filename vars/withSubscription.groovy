@@ -82,7 +82,7 @@ def servicePrincipalBasedLogin(String subscription, Closure body) {
   }
 }
 
-def identityBasedLogin(String subscription, String, vault Closure body) {
+def identityBasedLogin(String subscription, Closure body) {
   ansiColor('xterm') {
     def azJenkins = { cmd -> return sh(script: "env AZURE_CONFIG_DIR=/opt/jenkins/.azure-jenkins az $cmd", returnStdout: true).trim() }
     azJenkins "account set --subscription ${env.JENKINS_SUBSCRIPTION_NAME}"
