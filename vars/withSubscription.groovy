@@ -2,7 +2,7 @@
 import groovy.json.JsonSlurperClassic
 
 def call(String subscription, Closure body) {
-  if env.SERVICE_PRINCIPAL_LOGIN == true {
+  if (env.SERVICE_PRINCIPAL_LOGIN == true) {
     servicePrincipalBasedLogin(subscription, body)
   } else {
     try {
