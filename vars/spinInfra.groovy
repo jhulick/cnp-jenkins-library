@@ -46,7 +46,7 @@ def call(product, component, environment, planOnly, subscription, deploymentTarg
         def contactSlackChannel = teamConfig.getContactSlackChannel(product)
 
         def builtFrom = env.GIT_URL ?: 'unknown'
-        pipelineTags = new TerraformTagMap([environment: environment, changeUrl: changeUrl, '"Team Name"': teamName, BuiltFrom: builtFrom, contactSlackChannel: contactSlackChannel]).toString()
+        pipelineTags = new TerraformTagMap([environment: environment, changeUrl: changeUrl, managedBy: teamName, BuiltFrom: builtFrom, contactSlackChannel: contactSlackChannel]).toString()
         log.info "Building with following input parameters: common_tags='$pipelineTags'; product='$product'; component='$component'; deploymentNamespace='$deploymentNamespace'; deploymentTarget='$deploymentTarget' environment='$environment'; subscription='$subscription'; planOnly='$planOnly'"
 
         if (env.STORE_rg_name_template != null &&
@@ -78,6 +78,8 @@ def call(product, component, environment, planOnly, subscription, deploymentTarg
             -backend-config "key=${productName}/${environmentDeploymentTarget}/terraform.tfstate"
         """
 
+        env.TF_VAR_ilbIp = 'TODO remove after some time'
+        
         sh "terraform get -update=true"
         sh "terraform plan -out tfplan -var 'common_tags=${pipelineTags}' -var 'env=${environment}' -var 'subscription=${subscription}' -var 'deployment_namespace=${deploymentNamespace}' -var 'product=${product}' -var 'component=${component}'" +
           (fileExists("${environment}.tfvars") ? " -var-file=${environment}.tfvars" : "")

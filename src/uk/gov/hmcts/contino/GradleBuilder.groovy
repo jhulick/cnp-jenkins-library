@@ -1,14 +1,28 @@
 package uk.gov.hmcts.contino
+@Grab('com.microsoft.azure:azure-documentdb:1.15.2')
+
+import com.cloudbees.groovy.cps.NonCPS
+import com.microsoft.azure.documentdb.Document
+import com.microsoft.azure.documentdb.DocumentClient
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import uk.gov.hmcts.pipeline.deprecation.WarningCollector
 
 class GradleBuilder extends AbstractBuilder {
 
-  def product
+  private static final String COSMOS_COLLECTION_LINK = 'dbs/jenkins/colls/cve-reports'
 
+  def product
+  String cosmosDbUrl
   def java11 = "11"
 
   GradleBuilder(steps, product) {
     super(steps)
     this.product = product
+    Subscription subscription = new Subscription(steps.env)
+    this.cosmosDbUrl = subscription.nonProdName == "sandbox" ?
+      'https://sandbox-pipeline-metrics.documents.azure.com/' :
+      'https://pipeline-metrics.documents.azure.com/'
   }
 
   def build() {
@@ -23,7 +37,7 @@ class GradleBuilder extends AbstractBuilder {
 
   def test() {
     try {
-      gradle("--info check")
+      gradle("check")
     } finally {
       steps.junit '**/test-results/**/*.xml'
       steps.archiveArtifacts artifacts: '**/reports/checkstyle/*.html', allowEmptyArchive: true
@@ -38,7 +52,7 @@ class GradleBuilder extends AbstractBuilder {
     try {
       // By default Gradle will skip task execution if it's already been run (is 'up to date').
       // --rerun-tasks ensures that subsequent calls to tests against different slots are executed.
-      gradle("--info --rerun-tasks smoke")
+      gradle("--rerun-tasks smoke")
     } finally {
       steps.junit '**/test-results/**/*.xml'
     }
@@ -48,7 +62,7 @@ class GradleBuilder extends AbstractBuilder {
     try {
       // By default Gradle will skip task execution if it's already been run (is 'up to date').
       // --rerun-tasks ensures that subsequent calls to tests against different slots are executed.
-      gradle("--info --rerun-tasks functional")
+      gradle("--rerun-tasks functional")
     } finally {
       steps.junit '**/test-results/**/*.xml'
     }
@@ -58,7 +72,7 @@ class GradleBuilder extends AbstractBuilder {
     try {
       // By default Gradle will skip task execution if it's already been run (is 'up to date').
       // --rerun-tasks ensures that subsequent calls to tests against different slots are executed.
-      gradle("--info --rerun-tasks apiGateway")
+      gradle("--rerun-tasks apiGateway")
     } finally {
       steps.junit '**/test-results/**/*.xml'
     }
@@ -84,16 +98,60 @@ class GradleBuilder extends AbstractBuilder {
     ]
     steps.withAzureKeyvault(secrets) {
       try {
-        if (hasPlugin("org.owasp.dependencycheck.gradle.plugin:5")) {
-          gradle("-DdependencyCheck.failBuild=true -Dcve.check.validforhours=24 -Danalyzer.central.enabled=false -Ddata.driver_name='org.postgresql.Driver' -Ddata.connection_string='jdbc:postgresql://owaspdependency-v5-prod.postgres.database.azure.com/owaspdependencycheck' -Ddata.user='${steps.env.OWASPDB_V5_ACCOUNT}' -Ddata.password='${steps.env.OWASPDB_V5_PASSWORD}' -Dautoupdate='false' -Danalyzer.retirejs.enabled=false dependencyCheckAnalyze")
-        } else {
-          // NOTE: delete owasp 4 dependency check and its tests in GradleBuilderTest some time after 15/07/2019
-            throw new RuntimeException("Owasp dependency check version 4 is not available anymore. Please update your build to use version 5.")
-        }
+        gradle("-DdependencyCheck.failBuild=true -Dcve.check.validforhours=24 -Danalyzer.central.enabled=false -Ddata.driver_name='org.postgresql.Driver' -Ddata.connection_string='jdbc:postgresql://owaspdependency-v5-prod.postgres.database.azure.com/owaspdependencycheck' -Ddata.user='${steps.env.OWASPDB_V5_ACCOUNT}' -Ddata.password='${steps.env.OWASPDB_V5_PASSWORD}' -Dautoupdate='false' -Danalyzer.retirejs.enabled=false dependencyCheckAggregate")
       }
       finally {
         steps.archiveArtifacts 'build/reports/dependency-check-report.html'
+        publishCVEReport()
       }
+    }
+  }
+
+  def publishCVEReport() {
+    try {
+      steps.withCredentials([[$class: 'StringBinding', credentialsId: 'COSMOSDB_TOKEN_KEY', variable: 'COSMOSDB_TOKEN_KEY']]) {
+        if (steps.env.COSMOSDB_TOKEN_KEY == null) {
+          steps.echo "Set the 'COSMOSDB_TOKEN_KEY' environment variable to enable metrics publishing"
+          return
+        }
+
+        steps.echo "Publishing CVE report"
+        String dependencyReport = steps.readFile('build/reports/dependency-check-report.json')
+        def summary = prepareCVEReport(dependencyReport, steps.env)
+        createDocument(summary)
+      }
+    } catch (err) {
+      steps.echo "Unable to publish CVE report '${err}'"
+    }
+  }
+
+  def prepareCVEReport(owaspReportJSON, env) {
+    def report = new JsonSlurper().parseText(owaspReportJSON)
+    // Only include vulnerable dependencies to reduce the report size; Cosmos has a 2MB limit.
+    report.dependencies = report.dependencies.findAll {
+      it.vulnerabilities || it.suppressedVulnerabilities
+    }
+
+    def result = [
+      build: [
+        branch_name                  : env.BRANCH_NAME,
+        build_display_name           : env.BUILD_DISPLAY_NAME,
+        build_tag                    : env.BUILD_TAG,
+        git_url                      : env.GIT_URL,
+      ],
+      report: report
+    ]
+    return JsonOutput.toJson(result)
+  }
+
+  @NonCPS
+  private def createDocument(String reportJSON) {
+    def client = new DocumentClient(cosmosDbUrl, steps.env.COSMOSDB_TOKEN_KEY, null, null)
+    try {
+      client.createDocument(COSMOS_COLLECTION_LINK, new Document(reportJSON)
+        , null, false)
+    } finally {
+      client.close()
     }
   }
 
@@ -132,7 +190,7 @@ EOF
   }
 
   def fullFunctionalTest() {
-
+      functionalTest()
   }
 
   def dbMigrate(String vaultName, String microserviceName) {
@@ -156,12 +214,18 @@ EOF
       if (javaVersion == java11) {
         steps.env.JAVA_HOME = "/usr/share/jdk-11.0.2"
         steps.env.PATH = "${steps.env.JAVA_HOME}/bin:${steps.env.PATH}"
+      } else {
+        nagAboutJava11Required()
       }
     } catch(err) {
       steps.echo "Failed to detect java version, ensure the root project has sourceCompatibility set"
+      nagAboutJava11Required()
     }
     steps.sh "java -version"
+  }
 
+  def nagAboutJava11Required() {
+    WarningCollector.addPipelineWarning("deprecate_java_8", "Java 11 is required for all projects, change your source compatibility to 11 and update your Dockerfile base, see https://github.com/hmcts/draft-store/pull/644. ", new Date().parse("dd.MM.yyyy", "19.08.2020"))
   }
 
   def hasPlugin(String pluginName) {

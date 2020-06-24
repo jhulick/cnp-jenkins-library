@@ -42,22 +42,18 @@ def call(params) {
     }
   }
 
-  if (config.installCharts) {
-    withSubscription(subscription) {
-      withTeamSecrets(config, environment) {
-        stage("AKS deploy - ${environment}") {
-          pcr.callAround('akschartsinstall') {
-            timeoutWithMsg(time: 25, unit: 'MINUTES', action: 'Install Charts to AKS') {
-              onPR {
-                deploymentNumber = githubCreateDeployment()
-              }
-              withAksClient(subscription, environment) {
-                aksUrl = helmInstall(dockerImage, params)
-                log.info("deployed component URL: ${aksUrl}")
-              }
-              onPR {
-                githubUpdateDeploymentStatus(deploymentNumber, aksUrl)
-              }
+  stage("AKS deploy - ${environment}") {
+    withTeamSecrets(config, environment) {
+      pcr.callAround('akschartsinstall') {
+        withAksClient(subscription, environment) {
+          timeoutWithMsg(time: 25, unit: 'MINUTES', action: 'Install Charts to AKS') {
+            onPR {
+              deploymentNumber = githubCreateDeployment()
+            }
+            aksUrl = helmInstall(dockerImage, params)
+            log.info("deployed component URL: ${aksUrl}")
+            onPR {
+              githubUpdateDeploymentStatus(deploymentNumber, aksUrl)
             }
           }
         }
@@ -65,8 +61,8 @@ def call(params) {
     }
   }
 
-  if (config.installCharts && config.serviceApp) {
-      withSubscription(subscription) {
+  if (config.serviceApp) {
+    withSubscriptionLogin(subscription) {
         withTeamSecrets(config, environment) {
           stage("Smoke Test - AKS ${environment}") {
             testEnv(aksUrl) {

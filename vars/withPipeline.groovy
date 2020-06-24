@@ -130,16 +130,14 @@ def call(type, String product, String component, Closure body) {
           )
         }
 
-        if (pipelineConfig.installCharts) {
-          stage('Publish Helm chart') {
-            helmPublish(
-              appPipelineConfig: pipelineConfig,
-              subscription: subscription.nonProdName,
-              environment: environment.nonProdName,
-              product: product,
-              component: component
-            )
-          }
+        stage('Publish Helm chart') {
+          helmPublish(
+            appPipelineConfig: pipelineConfig,
+            subscription: subscription.nonProdName,
+            environment: environment.nonProdName,
+            product: product,
+            component: component
+          )
         }
 
         sectionDeployToEnvironment(
@@ -194,11 +192,16 @@ def call(type, String product, String component, Closure body) {
         )
       }
     } catch (err) {
-      currentBuild.result = "FAILURE"
-      notifyBuildFailure channel: slackChannel
-
+      if (err.message != null && err.message.startsWith('AUTO_ABORT')) {
+        currentBuild.result = 'ABORTED'
+        metricsPublisher.publish(err.message)
+        return
+      } else {
+        currentBuild.result = "FAILURE"
+        notifyBuildFailure channel: slackChannel
+        metricsPublisher.publish('Pipeline Failed')
+      }
       callbacksRunner.call('onFailure')
-      metricsPublisher.publish('Pipeline Failed')
       throw err
     } finally {
       notifyPipelineDeprecations(slackChannel, metricsPublisher)

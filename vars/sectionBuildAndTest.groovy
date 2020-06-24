@@ -4,7 +4,6 @@ import uk.gov.hmcts.contino.PipelineCallbacksRunner
 import uk.gov.hmcts.contino.AppPipelineConfig
 import uk.gov.hmcts.contino.DockerImage
 import uk.gov.hmcts.contino.ProjectBranch
-import uk.gov.hmcts.contino.PactBroker
 import uk.gov.hmcts.contino.azure.Acr
 import uk.gov.hmcts.pipeline.deprecation.WarningCollector
 
@@ -39,9 +38,7 @@ def call(params) {
   stage("Build") {
     onPR {
       enforceChartVersionBumped product: product, component: component
-      if (config.installCharts) {
-        warnAboutAADIdentityPreviewHack product: product, component: component
-      }
+      warnAboutAADIdentityPreviewHack product: product, component: component
     }
 
     builder.setupToolVersion()
