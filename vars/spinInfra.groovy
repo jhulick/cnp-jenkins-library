@@ -116,5 +116,3 @@ def call(product, component, environment, planOnly, subscription, deploymentTarg
       } else
         log.warning "Skipping apply due to planOnly flag set"
     }
-  }
-}
