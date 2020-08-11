@@ -6,15 +6,15 @@ import uk.gov.hmcts.pipeline.TeamConfig
 import uk.gov.hmcts.contino.MetricsPublisher
 import uk.gov.hmcts.contino.PipelineCallbacksRunner
 
-def call(productName, environment, planOnly, subscription) {
-  call(productName, null, environment, planOnly, subscription)
+def call(pipelineCallbacksRunner, productName, environment, planOnly, subscription) {
+  call(pipelineCallbacksRunner, productName, null, environment, planOnly, subscription)
 }
 
-def call(product, component, environment, planOnly, subscription) {
-  call(product, component, environment, planOnly, subscription, "")
+def call(pipelineCallbacksRunner, product, component, environment, planOnly, subscription) {
+  call(pipelineCallbacksRunner, product, component, environment, planOnly, subscription, "")
 }
 
-def call(product, component, environment, planOnly, subscription, deploymentTarget) {
+def call(pipelineCallbacksRunner, product, component, environment, planOnly, subscription, deploymentTarget) {
   PipelineCallbacksRunner pcr = params.pipelineCallbacksRunner
   def branch = new ProjectBranch(env.BRANCH_NAME)
 

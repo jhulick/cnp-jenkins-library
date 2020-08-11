@@ -2,6 +2,7 @@ import uk.gov.hmcts.contino.MetricsPublisher
 
 def call(params) {
   def pipelineConfig = params.pipelineConfig
+  def pipelineCallbacksRunner = params.pipelineCallbacksRunner
   def environment = params.environment
   def subscription = params.subscription
   def product = params.product

@@ -42,6 +42,7 @@ def call(String product, String environment, String subscription, Boolean planOn
 
       sectionInfraBuild(
         pipelineConfig: pipelineConfig,
+        pipelineCallbacksRunner: callbacksRunner,
         subscription: subscription,
         environment: environment,
         planOnly: planOnly,
