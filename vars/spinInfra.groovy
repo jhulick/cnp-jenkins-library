@@ -83,7 +83,7 @@ def call(product, component, environment, planOnly, subscription, deploymentTarg
         sh "terraform get -update=true"
       }
 
-      pcr.callAround("tfplan") {
+      pcr.callBefore("tfplan") {
         stage("Plan ${productName} in ${environmentDeploymentTarget}") {
 
           env.TF_VAR_ilbIp = 'TODO remove after some time'
