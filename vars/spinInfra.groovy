@@ -4,6 +4,7 @@ import uk.gov.hmcts.contino.ProjectBranch
 import uk.gov.hmcts.contino.TerraformTagMap
 import uk.gov.hmcts.pipeline.TeamConfig
 import uk.gov.hmcts.contino.MetricsPublisher
+import uk.gov.hmcts.contino.PipelineCallbacksRunner
 
 def call(productName, environment, planOnly, subscription) {
   call(productName, null, environment, planOnly, subscription)
@@ -14,6 +15,7 @@ def call(product, component, environment, planOnly, subscription) {
 }
 
 def call(product, component, environment, planOnly, subscription, deploymentTarget) {
+  PipelineCallbacksRunner pcr = params.pipelineCallbacksRunner
   def branch = new ProjectBranch(env.BRANCH_NAME)
 
   def deploymentNamespace = branch.deploymentNamespace()
@@ -39,7 +41,7 @@ def call(product, component, environment, planOnly, subscription, deploymentTarg
     stateStoreInit(environment, subscription, deploymentTarget)
 
     lock("${productName}-${environmentDeploymentTarget}") {
-      stage("Plan ${productName} in ${environmentDeploymentTarget}") {
+      stage("Init ${productName} in ${environmentDeploymentTarget}") {
 
         def teamConfig = new TeamConfig(this)
         teamName = teamConfig.getName(product)
@@ -78,11 +80,17 @@ def call(product, component, environment, planOnly, subscription, deploymentTarg
             -backend-config "key=${productName}/${environmentDeploymentTarget}/terraform.tfstate"
         """
 
-        env.TF_VAR_ilbIp = 'TODO remove after some time'
-        
         sh "terraform get -update=true"
-        sh "terraform plan -out tfplan -var 'common_tags=${pipelineTags}' -var 'env=${environment}' -var 'subscription=${subscription}' -var 'deployment_namespace=${deploymentNamespace}' -var 'product=${product}' -var 'component=${component}'" +
-          (fileExists("${environment}.tfvars") ? " -var-file=${environment}.tfvars" : "")
+      }
+
+      pcr.callAround("tfplan") {
+        stage("Plan ${productName} in ${environmentDeploymentTarget}") {
+
+          env.TF_VAR_ilbIp = 'TODO remove after some time'
+          
+          sh "terraform plan -out tfplan -var 'common_tags=${pipelineTags}' -var 'env=${environment}' -var 'subscription=${subscription}' -var 'deployment_namespace=${deploymentNamespace}' -var 'product=${product}' -var 'component=${component}'" +
+            (fileExists("${environment}.tfvars") ? " -var-file=${environment}.tfvars" : "")
+        }
       }
       if (!planOnly) {
         stage("Apply ${productName} in ${environmentDeploymentTarget}") {
