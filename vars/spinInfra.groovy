@@ -82,8 +82,14 @@ def call(product, component, environment, planOnly, subscription, deploymentTarg
 
         sh "terraform get -update=true"
       }
+    }
+  }
 
-      pcr.callBefore("tfplan") {
+  pcr.callAround("tfplan") {
+    approvedTerraformInfrastructure(environment, metricsPublisher) {
+      stateStoreInit(environment, subscription, deploymentTarget)
+
+      lock("${productName}-${environmentDeploymentTarget}") {
         stage("Plan ${productName} in ${environmentDeploymentTarget}") {
 
           env.TF_VAR_ilbIp = 'TODO remove after some time'
@@ -92,6 +98,8 @@ def call(product, component, environment, planOnly, subscription, deploymentTarg
             (fileExists("${environment}.tfvars") ? " -var-file=${environment}.tfvars" : "")
         }
       }
+    }
+  }
       if (!planOnly) {
         stage("Apply ${productName} in ${environmentDeploymentTarget}") {
           sh "terraform apply -auto-approve tfplan"
