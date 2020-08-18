@@ -39,8 +39,6 @@ def call() {
     def instanceMetadata = readJSON(text: response.content)
     env.TESTCONTAINERS_HOST_OVERRIDE = instanceMetadata.privateIpAddress
     env.DOCKER_IP = instanceMetadata.privateIpAddress
-    env.DOCKER_HOST = "tcp://${instanceMetadata.privateIpAddress}:2375"
-    echo "TESTCONTAINERS_HOST_OVERRIDE: ${env.TESTCONTAINERS_HOST_OVERRIDE}"
   }
 }
 
