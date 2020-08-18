@@ -27,4 +27,18 @@ def call() {
       echo "Using existing ssh id_rsa"
     }
   }
+  // Add testcontainers config
+  if (env.TESTCONTAINERS_HOST_OVERRIDE == null || "".equals(env.TESTCONTAINERS_HOST_OVERRIDE)) {
+    def response = httpRequest(
+      consoleLogResponseBody: true,
+      timeout: 10,
+      url: "http://169.254.169.254/metadata/instance?api-version=2020-06-01",
+      customHeaders: [[name: 'Metadata', value: 'true']],
+      validResponseCodes: '200'
+    )
+    def instanceMetadata = readJSON(text: response.content)
+    env.TESTCONTAINERS_HOST_OVERRIDE = instanceMetadata.network.interface[0].ipv4.ipAddress[0].privateIpAddress
+    echo "TESTCONTAINERS_HOST_OVERRIDE: ${env.TESTCONTAINERS_HOST_OVERRIDE}"
+  }
 }
+
