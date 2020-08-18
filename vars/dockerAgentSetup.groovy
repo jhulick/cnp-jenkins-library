@@ -38,7 +38,6 @@ def call() {
     )
     def instanceMetadata = readJSON(text: response.content)
     env.TESTCONTAINERS_HOST_OVERRIDE = instanceMetadata.privateIpAddress
-    env.DOCKER_IP = instanceMetadata.privateIpAddress
   }
 }
 
