@@ -63,8 +63,9 @@ abstract class BaseCnpPipelineTest extends BasePipelineTest {
       }  else if(m.get('script').startsWith("kubectl get service")){
         return '{"apiVersion":"v1","kind":"Service","spec":{"clusterIP":"10.0.238.83","externalTrafficPolicy":"Cluster",' +
           '"loadBalancerIP":"10.10.33.250","selector":{"app":"traefik","release":"traefik"},"type":"LoadBalancer"},"status":{"loadBalancer":{"ingress":[{"ip":"10.10.33.250"}]}}}'
-      }
-      else {
+      } else if(m.get('script').startsWith("grep ")){
+        return '1'
+      } else {
         return '{"azure_subscription": "fake_subscription_name","azure_client_id": "fake_client_id",' +
           '"azure_client_secret": "fake_secret","azure_tenant_id": "fake_tenant_id"}'
       }
