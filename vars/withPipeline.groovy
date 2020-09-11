@@ -180,6 +180,20 @@ def call(type, String product, String component, Closure body) {
         )
       }
 
+      onEthosldata {
+        sectionDeployToEnvironment(
+          appPipelineConfig: pipelineConfig,
+          pipelineCallbacksRunner: callbacksRunner,
+          pipelineType: pipelineType,
+          subscription: subscription.ethosldataName,
+          environment: environment.ethosldataName,
+          product: deploymentProduct,
+          component: component,
+          aksSubscription: aksSubscriptions.ethosldata,
+          pactBrokerUrl: environment.pactBrokerUrl
+        )
+      }
+
       onPreview {
         sectionDeployToEnvironment(
           appPipelineConfig: pipelineConfig,

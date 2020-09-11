@@ -16,7 +16,7 @@ def call(Map params) {
       appGwIp = params.aksSubscription.loadBalancerIp()
       azPrivateDns.registerDns("${params.product}-${params.component}-${params.environment}", appGwIp)
     } else {
-      echo "Could not register dns as this environment is not configured with it: ${aksSubscriptionName}"
+      error "Could not register dns as this environment is not configured with it: ${aksSubscriptionName}"
     }
   }
 }
