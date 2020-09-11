@@ -2,7 +2,6 @@
 import groovy.json.JsonSlurperClassic
 import uk.gov.hmcts.contino.ProjectBranch
 import uk.gov.hmcts.contino.TerraformTagMap
-import uk.gov.hmcts.pipeline.TeamConfig
 import uk.gov.hmcts.contino.MetricsPublisher
 
 def call(productName, environment, planOnly, subscription) {
@@ -35,18 +34,17 @@ def call(product, component, environment, planOnly, subscription, deploymentTarg
     throw new Exception("There is no SUBSCRIPTION_NAME environment variable, are you running inside a withSubscription block?")
   }
 
-  approvedTerraformInfrastructure(environment, metricsPublisher) {
+  approvedTerraformInfrastructure(environment, product, metricsPublisher) {
     stateStoreInit(environment, subscription, deploymentTarget)
 
     lock("${productName}-${environmentDeploymentTarget}") {
-      stage("Plan ${productName} in ${environmentDeploymentTarget}") {
+      stageWithAgent("Plan ${productName} in ${environmentDeploymentTarget}", product) {
 
-        def teamConfig = new TeamConfig(this)
-        teamName = teamConfig.getName(product)
-        def contactSlackChannel = teamConfig.getContactSlackChannel(product)
+        teamName = env.TEAM_NAME
+        def contactSlackChannel = env.CONTACT_SLACK_CHANNEL
 
         def builtFrom = env.GIT_URL ?: 'unknown'
-        pipelineTags = new TerraformTagMap([environment: environment, changeUrl: changeUrl, managedBy: teamName, BuiltFrom: builtFrom, contactSlackChannel: contactSlackChannel]).toString()
+        pipelineTags = new TerraformTagMap([environment: environment, changeUrl: changeUrl, managedBy: teamName, BuiltFrom: builtFrom, contactSlackChannel: contactSlackChannel, application: env.TEAM_APPLICATION_TAG ]).toString()
         log.info "Building with following input parameters: common_tags='$pipelineTags'; product='$product'; component='$component'; deploymentNamespace='$deploymentNamespace'; environment='$environment'; subscription='$subscription'; planOnly='$planOnly'"
 
         if (env.STORE_rg_name_template != null &&
@@ -70,6 +68,8 @@ def call(product, component, environment, planOnly, subscription, deploymentTarg
 
         sh "terraform --version"
 
+        warnAboutOldTfAzureProvider()
+
         sh """
           terraform init -reconfigure \
             -backend-config "storage_account_name=${env.STORE_sa_name_template}${subscription}" \
@@ -80,13 +80,15 @@ def call(product, component, environment, planOnly, subscription, deploymentTarg
 
         env.TF_VAR_ilbIp = 'TODO remove after some time'
         env.TF_VAR_deployment_namespace = deploymentNamespace
+        env.TF_VAR_subscription = subscription
+        env.TF_VAR_component = component
 
         sh "terraform get -update=true"
-        sh "terraform plan -out tfplan -var 'common_tags=${pipelineTags}' -var 'env=${environment}' -var 'subscription=${subscription}' -var 'product=${product}' -var 'component=${component}'" +
+        sh "terraform plan -out tfplan -var 'common_tags=${pipelineTags}' -var 'env=${environment}' -var 'product=${product}'" +
           (fileExists("${environment}.tfvars") ? " -var-file=${environment}.tfvars" : "")
       }
       if (!planOnly) {
-        stage("Apply ${productName} in ${environmentDeploymentTarget}") {
+        stageWithAgent("Apply ${productName} in ${environmentDeploymentTarget}", product) {
           sh "terraform apply -auto-approve tfplan"
           parseResult = null
           try {

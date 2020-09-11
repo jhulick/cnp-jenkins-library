@@ -59,9 +59,13 @@ def call(type, String product, String component, Closure body) {
 
   Environment environment = new Environment(env)
 
-  node {
-    def slackChannel = new TeamConfig(this).getBuildNoticesSlackChannel(product)
+  def teamConfig = new TeamConfig(this).setTeamConfigEnv(product)
+  String agentType = env.BUILD_AGENT_TYPE
+
+  node(agentType) {
+    def slackChannel = env.BUILD_NOTICES_SLACK_CHANNEL
     try {
+      dockerAgentSetup()
       env.PATH = "$env.PATH:/usr/local/bin"
 
       sectionBuildAndTest(
@@ -128,7 +132,7 @@ def call(type, String product, String component, Closure body) {
           pactBrokerUrl: environment.pactBrokerUrl
         )
 
-        stage('Publish Helm chart') {
+        stageWithAgent('Publish Helm chart', product) {
           helmPublish(
             appPipelineConfig: pipelineConfig,
             subscription: subscription.nonProdName,
