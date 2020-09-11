@@ -32,9 +32,9 @@ class AKSSubscriptions {
     def demoName = steps.env.AKS_DEMO_SUBSCRIPTION_NAME ?: 'DCD-CFTAPPS-DEMO'
     demo = new AKSSubscription(steps, demoName, 'cftapps-demo', 'demo', true)
 
-    def ethosldataName = 'DCD-ETHOS-MIGRATION-LDATA'
-    def ethosldataKvName = 'ethos-ldata'
-    ethosldata = new AKSSubscription(steps, ethosldataName, ethosldataKvName, 'ethosldata', true)
+    def ethosLdataName = 'DCD-ETHOS-MIGRATION-LDATA'
+    def ethosLdataKvName = 'ethos-ldata'
+    ethosldata = new AKSSubscription(steps, ethosLdataName, ethosLdataKvName, 'ethosldata', true)
 
   }
 }
