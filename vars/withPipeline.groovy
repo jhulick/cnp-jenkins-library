@@ -73,6 +73,7 @@ def call(type, String product, String component, Closure body) {
         pipelineCallbacksRunner: callbacksRunner,
         builder: pipelineType.builder,
         subscription: subscription.ethosLdataName,
+        aksSubscription: aksSubscriptions.ethosldata,
         environment: environment.ethosLdataName,
         product: product,
         component: component,
