@@ -7,6 +7,7 @@ class AKSSubscriptions {
   final AKSSubscription perftest
   final AKSSubscription prod
   final AKSSubscription demo
+  final AKSSubscription ethosldata
 
   AKSSubscriptions(Object steps) {
     Objects.requireNonNull(steps)
@@ -30,5 +31,10 @@ class AKSSubscriptions {
 
     def demoName = steps.env.AKS_DEMO_SUBSCRIPTION_NAME ?: 'DCD-CFTAPPS-DEMO'
     demo = new AKSSubscription(steps, demoName, 'cftapps-demo', 'demo', true)
+
+    def ethosldataName = 'DCD-ETHOS-MIGRATION-LDATA'
+    def ethosldataKvName = 'ethos-ldata'
+    ethosldata = new AKSSubscription(steps, ethosldataName, ethosldataKvName, 'ethosldata', true)
+
   }
 }
