@@ -7,7 +7,7 @@ def product = "product"
 def app = "app"
 
 stage("test") {
-    node("any") {
+    node("master") {
         folderExists('testResources') {
             echo "OK - Folder exists"
         }
